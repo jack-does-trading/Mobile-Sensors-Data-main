@@ -9,6 +9,9 @@ import 'gyroscope_data.dart';
 import 'dart:convert';
 import 'location.dart';
 import 'package:battery_info/battery_info_plugin.dart';
+import 'package:csv/csv.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 
 
@@ -625,6 +628,44 @@ class _MyHomePageState extends State<MyHomePage> {
         'energy_consumption':total_consumption,
         'battery_percentage':batt
       };
+
+      // Create CSV data
+      List<List<dynamic>> csvData = [
+        ['Timestamp', 'X', 'Y', 'Z', 'Activity'], // Header
+        ..._accelerometerData.map((data) => [
+          data.timestamp.toIso8601String(),
+          data.values[0],
+          data.values[1],
+          data.values[2],
+          data.activity,
+        ]),
+        [], // Empty row as separator
+        ['Timestamp', 'X', 'Y', 'Z', 'Activity'], // Header for gyroscope data
+        ..._gyroscopeData.map((data) => [
+          data.timestamp.toIso8601String(),
+          data.values[0],
+          data.values[1],
+          data.values[2],
+          data.activity,
+        ]),
+      ];
+
+      // Convert to CSV
+      String csv = const ListToCsvConverter().convert(csvData);
+
+      // Get the document directory
+      final directory = await getApplicationDocumentsDirectory();
+      final path = directory.path;
+      final fileName = '${file_name.text.trim()}_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File('$path/$fileName');
+
+      // Write to file
+      await file.writeAsString(csv);
+
+      print('CSV file saved at: ${file.path}');
+
+      // Add file path to the request body
+      requestBody['csv_file_path'] = file.path;
 
       final response = await http.post(
         url,
